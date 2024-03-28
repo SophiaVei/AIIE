@@ -514,7 +514,3 @@ top_occurrences_sorted = top_occurrences.sort_values(by='Count', ascending=False
 
 # Print top 10 occurrences, adjust the number as needed
 print('Top_occurrences for Sector - Transparency',top_occurrences_sorted.head(10).to_string(index=False))
-
-
-
-
