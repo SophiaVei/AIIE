@@ -200,7 +200,7 @@ def display_heatmap(data, index_cols, column_cols, title):
     return fig
 
 # Interactive Streamlit components
-st.title('Data Exploration Interactive Heatmaps')
+st.title('Data Exploration Heatmaps')
 
 # Process and prepare data
 df = load_data()
