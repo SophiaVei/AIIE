@@ -1,12 +1,12 @@
+import numpy as np
 import pandas as pd
 import re
 import seaborn as sns
 import matplotlib.pyplot as plt
 import streamlit as st
 import plotly.figure_factory as ff
+st.set_page_config(layout="wide")
 
-
-# Load the dataset
 # Load the dataset
 @st.cache(allow_output_mutation=True)
 def load_data():
@@ -137,51 +137,90 @@ merge_rename_operations_transparency = {
 
 
 }
+# Function to get the top N or all columns based on frequency
+def get_top_columns(df, columns, top_n):
+    frequency = df[columns].sum().sort_values(ascending=False)
+    if top_n != 'All':
+        return frequency.head(top_n).index.tolist()
+    return frequency.index.tolist()
 
-# Process each column with the preprocess_column function and your configurations
+
+# Streamlit app layout
+st.title('Data Exploration Heatmaps')
+
+
+
+# Replace the slider with a dropdown for selecting the number of top frequencies
+top_n_options = ["Top 10", "Top 20", "Top 50", "All"]
+frequency_option = st.selectbox("Select the number of top frequencies to display:", options=top_n_options)
+
+# Mapping selected option to a value
+top_n_values = {'Top 10': 10, 'Top 20': 20, 'Top 50': 50, 'All': 'All'}
+top_n = top_n_values[frequency_option]
+
+# Continue with your logic using the selected `top_n` value
+
+
 df_processed, technology_set = preprocess_column(df, 'Technology(ies)', 'tech', merge_rename_operations_technology)
 df_processed, sector_set = preprocess_column(df_processed, 'Sector(s)', 'sector', merge_rename_operations_sector)
 df_processed, issue_set = preprocess_column(df_processed, 'Issue(s)', 'issue', merge_rename_operations_issue)
 df_processed, transparency_set = preprocess_column(df_processed, 'Transparency', 'transp', merge_rename_operations_transparency)
 
-# Extracting technology and issue columns
-tech_columns = [col for col in df_processed.columns if col.startswith('tech_')]
-issue_columns = [col for col in df_processed.columns if col.startswith('issue_')]
-sector_columns = [col for col in df_processed.columns if col.startswith('sector_')]
-transp_columns = [col for col in df_processed.columns if col.startswith('transp_')]
+# Extracting technology and issue columns with dynamic top N filtering
+tech_columns = get_top_columns(df_processed, [col for col in df_processed.columns if col.startswith('tech_')], top_n)
+issue_columns = get_top_columns(df_processed, [col for col in df_processed.columns if col.startswith('issue_')], top_n)
+sector_columns = get_top_columns(df_processed, [col for col in df_processed.columns if col.startswith('sector_')], top_n)
+transp_columns = get_top_columns(df_processed, [col for col in df_processed.columns if col.startswith('transp_')], top_n)
+
 
 
 def generate_interactive_heatmap(df_processed, index_columns, column_columns, title):
+    # Initialize the occurrence matrix with zeros
     occurrence_matrix = pd.DataFrame(0, index=index_columns, columns=column_columns)
+
+    # Calculate occurrences
     for index_col in index_columns:
         for column_col in column_columns:
-            count = (df_processed[index_col] & df_processed[column_col]).sum()
-            occurrence_matrix.loc[index_col, column_col] = count
+            if index_col in df_processed.columns and column_col in df_processed.columns:  # Ensure columns exist
+                occurrence_matrix.loc[index_col, column_col] = np.logical_and(df_processed[index_col] == 1, df_processed[column_col] == 1).sum()
 
-    # Define the size of the figure
-    heatmap_width = max(10, len(column_columns) * 20)
-    heatmap_height = max(10, len(index_columns) * 20)
+    # Dynamic adjustments for figure size based on category count
+    min_width_per_column = 80  # Minimum width per column
+    min_height_per_row = 35  # Minimum height per row
+    base_width = 300  # Base width to start with
+    base_height = 200  # Base height to start with
 
+    num_columns = len(column_columns)
+    num_rows = len(index_columns)
+    fig_width = base_width + num_columns * min_width_per_column
+    fig_height = base_height + num_rows * min_height_per_row
+
+    # Make sure the figure is not too small when there are few categories
+    fig_width = max(fig_width, 500)  # Adjust minimum figure width as needed
+    fig_height = max(fig_height, 300)  # Adjust minimum figure height as needed
+
+    # Custom colorscale from white to blue
+    custom_colorscale = [[0, 'white'], [1, 'blue']]
+
+    # Create the heatmap with plotly
     fig = ff.create_annotated_heatmap(
         z=occurrence_matrix.values,
-        x=occurrence_matrix.columns.tolist(),
-        y=occurrence_matrix.index.tolist(),
-        annotation_text=None,  # Removing the annotations
+        x=[col.split('_', 1)[1] for col in occurrence_matrix.columns],
+        y=[idx.split('_', 1)[1] for idx in occurrence_matrix.index],
+        annotation_text=occurrence_matrix.values.astype(str),
         showscale=True,
-        colorscale='Viridis'
+        colorscale=custom_colorscale,
     )
     fig.update_layout(
         title=title,
         autosize=False,
-        width=heatmap_width,  # Set the width of the heatmap
-        height=heatmap_height,  # Set the height of the heatmap
-        margin=dict(t=50, l=50, b=50, r=50),  # Adjust margins to fit titles, labels, etc
+        width=fig_width,
+        height=fig_height,
+        margin=dict(t=50, l=50, b=150, r=50),
     )
-    fig.update_xaxes(side="top")  # Move x-axis labels to the top
+    fig.update_xaxes(tickangle=-45)
 
     return fig
-
-
 
 
 # Function to generate and display a heatmap
@@ -199,42 +238,28 @@ def display_heatmap(data, index_cols, column_cols, title):
     plt.yticks(rotation=0)
     return fig
 
-# Interactive Streamlit components
-st.title('Data Exploration Heatmaps')
 
-# Process and prepare data
-df = load_data()
-df_processed, technology_set = preprocess_column(df, 'Technology(ies)', 'tech', merge_rename_operations_technology)
-df_processed, sector_set = preprocess_column(df_processed, 'Sector(s)', 'sector', merge_rename_operations_sector)
-df_processed, issue_set = preprocess_column(df_processed, 'Issue(s)', 'issue', merge_rename_operations_issue)
-df_processed, transparency_set = preprocess_column(df_processed, 'Transparency', 'transp', merge_rename_operations_transparency)
 
-# Example usage in Streamlit
+# Continue with your app logic...
 option = st.selectbox(
     'Choose the heatmap you want to display',
-    ('Technology vs Issue', 'Issue vs Technology', 'Technology vs Sector', 'Sector vs Issue', 'Transparency vs Issue', 'Issue vs Transparency', 'Sector vs Transparency'))
+    ('Technology vs Issue', 'Issue vs Technology', 'Technology vs Sector', 'Sector vs Issue', 'Transparency vs Issue', 'Issue vs Transparency', 'Sector vs Transparency')
+)
 
 # Mapping option to function call
 if option == 'Technology vs Issue':
     fig = generate_interactive_heatmap(df_processed, tech_columns, issue_columns, 'Heatmap of Technology(ies) vs Issue(s)')
-    st.plotly_chart(fig, use_container_width=False)  # Set to False to use the specified figure dimensions
 elif option == 'Issue vs Technology':
     fig = generate_interactive_heatmap(df_processed, issue_columns, tech_columns, 'Heatmap of Issue(s) vs Technology(ies)')
-    st.plotly_chart(fig, use_container_width=False)
 elif option == 'Technology vs Sector':
     fig = generate_interactive_heatmap(df_processed, tech_columns, sector_columns, 'Heatmap of Technology(ies) vs Sector(s)')
-    st.plotly_chart(fig, use_container_width=False)
 elif option == 'Sector vs Issue':
     fig = generate_interactive_heatmap(df_processed, sector_columns, issue_columns, 'Heatmap of Sector(s) vs Issue(s)')
-    st.plotly_chart(fig, use_container_width=False)
 elif option == 'Transparency vs Issue':
     fig = generate_interactive_heatmap(df_processed, transp_columns, issue_columns, 'Heatmap of Transparency vs Issue(s)')
-    st.plotly_chart(fig, use_container_width=False)
 elif option == 'Issue vs Transparency':
     fig = generate_interactive_heatmap(df_processed, issue_columns, transp_columns, 'Heatmap of Issue(s) vs Transparency')
-    st.plotly_chart(fig, use_container_width=False)
 elif option == 'Sector vs Transparency':
     fig = generate_interactive_heatmap(df_processed, sector_columns, transp_columns, 'Heatmap of Sector(s) vs Transparency')
-    st.plotly_chart(fig, use_container_width=False)
 
-# No need for st.pyplot(fig) when using Plotly charts
+st.plotly_chart(fig, use_container_width=False)

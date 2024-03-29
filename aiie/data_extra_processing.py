@@ -11,7 +11,6 @@ pd.set_option('display.max_colwidth', None)
 # Load the dataset
 df = pd.read_csv(r"C:\Users\Sofia\PycharmProjects\AIIE\processed_dataset.csv").dropna(how="all")
 
-
 # Function to clean, split, and normalize column values
 def clean_split_normalize(values):
     if pd.isna(values):
@@ -47,6 +46,7 @@ def preprocess_column(df, column_name, prefix, merge_rename_operations={}):
     processed_df = pd.concat([df.drop(columns=[column_name]), encoded_df], axis=1)
 
     return processed_df, unique_set
+
 # Define merge and rename operations for 'Technology(ies)' and 'Sector(s)'
 # Merge and rename specific columns as requested for 'Technology(ies)'
 merge_rename_operations_technology = {
@@ -81,7 +81,7 @@ merge_rename_operations_technology = {
     'tech_scheduling algorithm/software': [ 'tech_scheduling algorithm', 'tech_crew scheduling software'],
 }
 
-# Merge and rename specific columns as requested for 'Technology(ies)'
+# Merge and rename specific columns as requested for 'Sector(s)'
 merge_rename_operations_sector = {
     'sector_sector_real estate sales/management': ['sector_real estate sales/management',  'sector_real estate'],
     'sector_govt - health': [ 'sector_gov - health', 'sector_govt - health'],
@@ -94,6 +94,7 @@ merge_rename_operations_sector = {
     'sector_telecoms': ['sector_telecoms',  'sector_govt - telecoms']
 }
 
+# Merge and rename specific columns as requested for 'Issue(s)'
 merge_rename_operations_issue = {
     'issue_bias/discrimination - lgbtqi+': ['issue_bias/discrimination - transgender',  'issue_transgender',  'issue_bias/discrimination - sexual preference (lgbtq)', 'issue_bias/discrimination - lgbtq', 'issue_lgbtq',],
     'issue_necessity/proportionality': [ 'issue_necessity/proportionality', 'issue_proportionality'],
@@ -136,6 +137,7 @@ merge_rename_operations_issue = {
 
 }
 
+# Merge and rename specific columns as requested for 'Transparency'
 merge_rename_operations_transparency = {
     'transp_black box': [ 'transp_back box', 'transp_black box','transp_governance: black box'],
     'transp_legal': ['transp_legal', 'transp_legal - mediation', 'transp_legal - foi request blocks'],
@@ -146,11 +148,31 @@ merge_rename_operations_transparency = {
 
 }
 
-# Process each column and keep track of the unique sets
+# Process 'Technology(ies)' column and keep track of the unique set
 df_processed, technology_set = preprocess_column(df, 'Technology(ies)', 'tech', merge_rename_operations_technology)
+# Print the number of unique technology items (columns) before merging
+print(f"Unique Technology(ies) column names before merging: {len(technology_set)}")
+# Print the number of columns after merging
+tech_columns = [col for col in df_processed.columns if col.startswith('tech_')]
+print(f"Newly created/merged column names for Technology(ies) after merging: {len(tech_columns)}, columns: {tech_columns}")
+
+# Process 'Sector(s)' column and keep track of the unique set
 df_processed, sector_set = preprocess_column(df_processed, 'Sector(s)', 'sector', merge_rename_operations_sector)
+print(f"Unique Sector(s) column names before merging: {len(sector_set)}")
+sector_columns = [col for col in df_processed.columns if col.startswith('sector_')]
+print(f"Newly created/merged column names for Sector(s) after merging: {len(sector_columns)}, columns: {sector_columns}")
+
+# Process 'Issue(s)' column and keep track of the unique set
 df_processed, issue_set = preprocess_column(df_processed, 'Issue(s)', 'issue', merge_rename_operations_issue)
+print(f"Unique Issue(s) column names before merging: {len(issue_set)}")
+issue_columns = [col for col in df_processed.columns if col.startswith('issue_')]
+print(f"Newly created/merged column names for Issue(s) after merging: {len(issue_columns)}, columns: {issue_columns}")
+
+# Process 'Transparency' column and keep track of the unique set
 df_processed, transparency_set = preprocess_column(df_processed, 'Transparency', 'transp', merge_rename_operations_transparency)
+print(f"Unique Transparency column names before merging: {len(transparency_set)}")
+transp_columns = [col for col in df_processed.columns if col.startswith('transp_')]
+print(f"Newly created/merged column names for Transparency after merging: {len(transp_columns)}, columns: {transp_columns}")
 
 
 # Print the newly created/merged column names and their count for each category
@@ -159,10 +181,7 @@ sector_columns = [col for col in df_processed.columns if col.startswith('sector_
 issue_columns = [col for col in df_processed.columns if col.startswith('issue_')]
 transp_columns = [col for col in df_processed.columns if col.startswith('transp_')]
 
-print(f"Newly created/merged column names for Technology(ies): {len(tech_columns)}, columns: {tech_columns}")
-print(f"Newly created/merged column names for Sector(s): {len(sector_columns)}, columns: {sector_columns}")
-print(f"Newly created/merged column names for Issue(s): {len(issue_columns)}, columns: {issue_columns}")
-print(f"Newly created/merged column names for Transparency: {len(transp_columns)}, columns: {transp_columns}")
+
 
 # Save the fully processed DataFrame
 df_processed.to_csv(r"C:\Users\Sofia\PycharmProjects\AIIE\final_processed_dataset.csv", index=False)
@@ -174,7 +193,6 @@ tech_columns = [col for col in df_processed.columns if col.startswith('tech_')]
 issue_columns = [col for col in df_processed.columns if col.startswith('issue_')]
 sector_columns = [col for col in df_processed.columns if col.startswith('sector_')]
 transp_columns = [col for col in df_processed.columns if col.startswith('transp_')]
-
 
 
 ################################################# TECHNOLOGY VS ISSUE #################################################
