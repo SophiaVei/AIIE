@@ -5,6 +5,14 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import streamlit as st
 import plotly.figure_factory as ff
+import umap
+from sklearn.preprocessing import StandardScaler
+import plotly.express as px
+from sklearn.cluster import KMeans
+from sklearn.manifold import TSNE
+
+
+
 st.set_page_config(layout="wide")
 
 # Load the dataset
@@ -75,7 +83,7 @@ merge_rename_operations_technology = {
 
 # Merge and rename specific columns as requested for 'Technology(ies)'
 merge_rename_operations_sector = {
-    'sector_sector_real estate sales/management ': ['sector_real estate sales/management',  'sector_real estate'],
+    'sector_sector_real estate sales / management': ['sector_real estate sales/management',  'sector_real estate'],
     'sector_govt - health ': [ 'sector_gov - health', 'sector_govt - health'],
     'sector_business/professional services ': [ 'sector_professional/business services',  'sector_business/professional services'],
     'sector_govt - police ': [ 'sector_govt - police', 'sector_police'],
@@ -239,7 +247,6 @@ def display_heatmap(data, index_cols, column_cols, title):
     return fig
 
 
-
 # Continue with your app logic...
 option = st.selectbox(
     'Choose the heatmap you want to display',
@@ -261,3 +268,177 @@ elif option == 'Sector vs Transparency':
     fig = generate_interactive_heatmap(df_processed, sector_columns, transp_columns, 'Heatmap of Sector(s) vs Transparency')
 
 st.plotly_chart(fig, use_container_width=False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+st.title('Clustering of Incidents')
+
+# Filter for incidents only if your dataset includes various types
+df_incidents = df_processed[df_processed['Type'] == 'Incident'].reset_index(drop=True)
+
+# Prepare separate feature categories
+feature_categories = {
+    'tech': 'Technology Features',
+    'transp': 'Transparency Features',
+    'issue': 'Issue Features',
+    'sector': 'Sector Features'
+}
+feature_selection = {}
+
+# Helper function to prepare feature selection multiselects
+def prepare_feature_multiselects(df, prefix, label):
+    features = [col for col in df.columns if col.startswith(prefix)]
+    feature_names = [col.replace(prefix + '_', '') for col in features]
+    # Add "All" option at the beginning of the options list
+    all_options = ['All'] + feature_names
+    selected_features = st.multiselect(f'Select {label}:', options=all_options, default='All')
+
+    if 'All' in selected_features:
+        # If "All" is selected, return all features under this prefix
+        return [prefix + '_' + feature for feature in feature_names]
+    else:
+        # Return only the selected features, with the prefix appended
+        return [prefix + '_' + feature for feature in selected_features]
+
+
+# Create multiselects for each category and collect selected features
+for prefix, label in feature_categories.items():
+    selected_features = prepare_feature_multiselects(df_incidents, prefix, label)
+    feature_selection[prefix] = selected_features
+
+
+# Flatten selected features from all categories
+all_selected_features = [feature for features in feature_selection.values() for feature in features]
+
+# Apply UMAP and KMeans clustering if features are selected
+if all_selected_features and st.button('Generate Clustering'):
+    # Preprocess features with one-hot encoding and standard scaling
+    df_features = pd.get_dummies(df_incidents[all_selected_features], drop_first=True)
+    scaler = StandardScaler()
+    scaled_features = scaler.fit_transform(df_features)
+
+    # Apply UMAP
+    reducer = umap.UMAP(n_neighbors=15, n_components=2, metric='euclidean', random_state=42)
+    embedding = reducer.fit_transform(scaled_features)
+
+    # Apply KMeans clustering
+    kmeans = KMeans(n_clusters=5, random_state=42)
+    clusters = kmeans.fit_predict(embedding)
+
+    # Prepare DataFrame for plotting
+    df_embedding = pd.DataFrame(embedding, columns=['UMAP-1', 'UMAP-2'])
+    df_embedding['Cluster'] = clusters
+    df_embedding['Headline/title'] = df_incidents['Headline/title'].values
+
+    # Generate scatter plot
+    fig = px.scatter(df_embedding, x='UMAP-1', y='UMAP-2', color='Cluster', hover_data=['Headline/title'])
+    fig.update_traces(marker=dict(size=5))
+    fig.update_layout(title='Incident Clustering with UMAP & Cluster Coloring', margin=dict(l=0, r=0, b=0, t=30))
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.write("Please select features and click 'Generate Clustering' to visualize.")
+
+
+
+
+
+
+
+
+
+st.title('Clustering of Incidents (TSNE)')
+
+# Filter for incidents only if your dataset includes various types
+df_incidents = df_processed[df_processed['Type'] == 'Incident'].reset_index(drop=True)
+
+# Prepare separate feature categories
+feature_categories = {
+    'tech': 'Technology Features',
+    'transp': 'Transparency Features',
+    'issue': 'Issue Features',
+    'sector': 'Sector Features'
+}
+feature_selection = {}
+
+# Helper function to prepare feature selection multiselects
+def prepare_feature_multiselects(df, prefix, label):
+    features = [col for col in df.columns if col.startswith(prefix)]
+    feature_names = [col.replace(prefix + '_', '') for col in features]
+    # Include "All" option alongside the feature names
+    all_options = ['All'] + feature_names
+    # Use a unique key for each multiselect and include the "All" option
+    selected_features = st.multiselect(
+        label=f'Select {label}:',
+        options=all_options,
+        default='All',
+        key=f'multiselect_{prefix}'  # Maintain unique key for each multiselect
+    )
+    if 'All' in selected_features:
+        # If "All" is selected, return all features with prefix
+        return [prefix + '_' + feature for feature in feature_names]
+    else:
+        # Else, return only the selected features with prefix
+        return [prefix + '_' + feature for feature in selected_features]
+
+
+
+# Create multiselects for each category and collect selected features
+for prefix, label in feature_categories.items():
+    selected_features = prepare_feature_multiselects(df_incidents, prefix, label)
+    feature_selection[prefix] = selected_features
+
+# Flatten selected features from all categories
+all_selected_features = [feature for features in feature_selection.values() for feature in features]
+
+
+# Apply t-SNE and KMeans clustering if features are selected
+if all_selected_features and st.button('Generate Clustering with t-SNE'):
+    # Preprocess features with one-hot encoding and standard scaling
+    df_features = pd.get_dummies(df_incidents[all_selected_features], drop_first=True)
+    scaler = StandardScaler()
+    scaled_features = scaler.fit_transform(df_features)
+
+    # Apply t-SNE
+    tsne = TSNE(n_components=2, random_state=42)
+    embedding = tsne.fit_transform(scaled_features)
+
+    # Apply KMeans clustering
+    kmeans = KMeans(n_clusters=5, random_state=42)
+    clusters = kmeans.fit_predict(embedding)
+
+    # Prepare DataFrame for plotting
+    df_embedding = pd.DataFrame(embedding, columns=['t-SNE-1', 't-SNE-2'])
+    df_embedding['Cluster'] = clusters
+    df_embedding['Headline/title'] = df_incidents['Headline/title'].values
+
+    # Generate scatter plot
+    fig = px.scatter(df_embedding, x='t-SNE-1', y='t-SNE-2', color='Cluster', hover_data=['Headline/title'])
+    fig.update_traces(marker=dict(size=5))
+    fig.update_layout(title='Incident Clustering with t-SNE & Cluster Coloring', margin=dict(l=0, r=0, b=0, t=30))
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.write("Please select features and click 'Generate Clustering with t-SNE' to visualize.")
