@@ -293,9 +293,7 @@ st.plotly_chart(fig, use_container_width=False)
 
 
 
-
-
-st.title('Clustering of Incidents')
+st.title('Clustering of Incidents (UMAP)')
 
 # Filter for incidents only if your dataset includes various types
 df_incidents = df_processed[df_processed['Type'] == 'Incident'].reset_index(drop=True)
@@ -344,23 +342,49 @@ if all_selected_features and st.button('Generate Clustering'):
     # Apply UMAP
     reducer = umap.UMAP(n_neighbors=15, n_components=2, metric='euclidean', random_state=42)
     embedding = reducer.fit_transform(scaled_features)
+    df_embedding = pd.DataFrame(embedding, columns=['UMAP-1', 'UMAP-2'])
 
     # Apply KMeans clustering
     kmeans = KMeans(n_clusters=5, random_state=42)
+    # After KMeans clustering
     clusters = kmeans.fit_predict(embedding)
 
-    # Prepare DataFrame for plotting
-    df_embedding = pd.DataFrame(embedding, columns=['UMAP-1', 'UMAP-2'])
+    # Correctly add the Cluster column to df_embedding BEFORE plotting
     df_embedding['Cluster'] = clusters
-    df_embedding['Headline/title'] = df_incidents['Headline/title'].values
 
-    # Generate scatter plot
-    fig = px.scatter(df_embedding, x='UMAP-1', y='UMAP-2', color='Cluster', hover_data=['Headline/title'])
+
+    # Then, your aggregate_features function
+    def aggregate_features(df, prefix):
+        aggregated_info = []
+        for _, row in df.iterrows():
+            features = [col.replace(prefix + '_', '') for col in df.columns if col.startswith(prefix) and row[col] == 1]
+            aggregated_info.append(", ".join(features))
+        return aggregated_info
+
+
+    # Adding Headline/title and aggregated features for hover information
+    df_embedding['Headline/title'] = df_incidents['Headline/title'].values
+    df_embedding['Technology'] = aggregate_features(df_incidents, 'tech')
+    df_embedding['Sector'] = aggregate_features(df_incidents, 'sector')
+    df_embedding['Issue'] = aggregate_features(df_incidents, 'issue')
+    df_embedding['Transparency'] = aggregate_features(df_incidents, 'transp')
+
+    # Now generate the scatter plot
+    fig = px.scatter(df_embedding, x='UMAP-1', y='UMAP-2', color='Cluster',
+                     hover_data=['Headline/title', 'Technology', 'Sector', 'Issue', 'Transparency'])
     fig.update_traces(marker=dict(size=5))
-    fig.update_layout(title='Incident Clustering with UMAP & Cluster Coloring', margin=dict(l=0, r=0, b=0, t=30))
+    fig.update_layout(
+        title='Incident Clustering with UMAP & Cluster Coloring',
+        margin=dict(l=0, r=0, b=0, t=30),
+        legend_title_text='Cluster',
+        legend=dict(
+            itemsizing='constant',  # Make legend items larger
+            title_font_size=25,  # Adjust legend title font size
+            font_size=24  # Adjust legend item font size
+        )
+    )
+
     st.plotly_chart(fig, use_container_width=True)
-else:
-    st.write("Please select features and click 'Generate Clustering' to visualize.")
 
 
 
@@ -431,14 +455,27 @@ if all_selected_features and st.button('Generate Clustering with t-SNE'):
     clusters = kmeans.fit_predict(embedding)
 
     # Prepare DataFrame for plotting
-    df_embedding = pd.DataFrame(embedding, columns=['t-SNE-1', 't-SNE-2'])
-    df_embedding['Cluster'] = clusters
+    df_embedding = pd.DataFrame(embedding, columns=['UMAP-1', 'UMAP-2'])
+    df_embedding['Cluster'] = clusters.astype(str)  # Cast cluster numbers to string for categorical coloring
     df_embedding['Headline/title'] = df_incidents['Headline/title'].values
 
-    # Generate scatter plot
-    fig = px.scatter(df_embedding, x='t-SNE-1', y='t-SNE-2', color='Cluster', hover_data=['Headline/title'])
-    fig.update_traces(marker=dict(size=5))
-    fig.update_layout(title='Incident Clustering with t-SNE & Cluster Coloring', margin=dict(l=0, r=0, b=0, t=30))
+    # Generate scatter plot with Plotly's automatic color assignment for categorical data
+    fig = px.scatter(df_embedding, x='UMAP-1', y='UMAP-2', color='Cluster', hover_data=['Headline/title'])
+
+    fig.update_traces(marker=dict(size=5))  # Keeping scatter plot markers at the desired size
+
+    fig.update_layout(
+        title='Incident Clustering with UMAP & Cluster Coloring',
+        margin=dict(l=0, r=0, b=0, t=30),
+        legend_title_text='Cluster',
+        legend=dict(
+            itemsizing='constant',  # Attempt to make legend items appear larger
+            title_font_size=25,  # Adjusting the legend title font size
+            font_size=24  # Adjusting the legend item font size
+        )
+    )
+
     st.plotly_chart(fig, use_container_width=True)
+
 else:
-    st.write("Please select features and click 'Generate Clustering with t-SNE' to visualize.")
+    st.write("Please select features and click 'Generate Clustering' to visualize.")
