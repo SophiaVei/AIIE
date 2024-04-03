@@ -83,7 +83,7 @@ merge_rename_operations_technology = {
 
 # Merge and rename specific columns as requested for 'Technology(ies)'
 merge_rename_operations_sector = {
-    'sector_sector_real estate sales / management': ['sector_real estate sales/management',  'sector_real estate'],
+    'sector_real estate sales / management': ['sector_real estate sales/management',  'sector_real estate'],
     'sector_govt - health ': [ 'sector_gov - health', 'sector_govt - health'],
     'sector_business/professional services ': [ 'sector_professional/business services',  'sector_business/professional services'],
     'sector_govt - police ': [ 'sector_govt - police', 'sector_police'],
@@ -182,7 +182,7 @@ transp_columns = get_top_columns(df_processed, [col for col in df_processed.colu
 
 
 
-def generate_interactive_heatmap(df_processed, index_columns, column_columns, title):
+def generate_interactive_heatmap(df_processed, index_columns, column_columns, title, xaxis_title, yaxis_title):
     # Initialize the occurrence matrix with zeros
     occurrence_matrix = pd.DataFrame(0, index=index_columns, columns=column_columns)
 
@@ -203,10 +203,6 @@ def generate_interactive_heatmap(df_processed, index_columns, column_columns, ti
     fig_width = base_width + num_columns * min_width_per_column
     fig_height = base_height + num_rows * min_height_per_row
 
-    # Make sure the figure is not too small when there are few categories
-    fig_width = max(fig_width, 500)  # Adjust minimum figure width as needed
-    fig_height = max(fig_height, 300)  # Adjust minimum figure height as needed
-
     # Custom colorscale from white to blue
     custom_colorscale = [[0, 'white'], [1, 'blue']]
 
@@ -225,26 +221,13 @@ def generate_interactive_heatmap(df_processed, index_columns, column_columns, ti
         width=fig_width,
         height=fig_height,
         margin=dict(t=50, l=50, b=150, r=50),
+        xaxis_title=xaxis_title,  # Set x-axis title
+        yaxis_title=yaxis_title,  # Set y-axis title
     )
     fig.update_xaxes(tickangle=-45)
 
     return fig
 
-
-# Function to generate and display a heatmap
-def display_heatmap(data, index_cols, column_cols, title):
-    occurrence_matrix = pd.DataFrame(0, index=index_cols, columns=column_cols)
-    for index_col in index_cols:
-        for column_col in column_cols:
-            count = (data[index_col] & data[column_col]).sum()
-            occurrence_matrix.loc[index_col, column_col] = count
-    fig, ax = plt.subplots(figsize=(20, 10))  # Adjust figure size as needed
-    cmap = sns.diverging_palette(230, 20, as_cmap=True)
-    sns.heatmap(occurrence_matrix, annot=True, fmt="d", cmap=cmap, ax=ax)
-    ax.set_title(title)
-    plt.xticks(rotation=45, ha="right")
-    plt.yticks(rotation=0)
-    return fig
 
 
 # Continue with your app logic...
@@ -253,19 +236,76 @@ option = st.selectbox(
     ('Technology vs Issue', 'Technology vs Sector', 'Sector vs Issue', 'Technology vs Transparency', 'Issue vs Transparency', 'Sector vs Transparency')
 )
 
+# After selecting the heatmap to display
+title_mapping = {
+    'Technology vs Issue': 'Heatmap of Technology(ies) vs Issue(s)',
+    'Technology vs Sector': 'Heatmap of Technology(ies) vs Sector(s)',
+    'Sector vs Issue': 'Heatmap of Sector(s) vs Issue(s)',
+    'Technology vs Transparency': 'Heatmap of Technology(ies) vs Transparency',
+    'Issue vs Transparency': 'Heatmap of Issue(s) vs Transparency',
+    'Sector vs Transparency': 'Heatmap of Sector(s) vs Transparency',
+}
+
+# Display the selected heatmap's title
+st.write(f"### {title_mapping[option]}")
+# Add space after the title
+st.markdown("<br><br>", unsafe_allow_html=True)
+
 # Mapping option to function call
 if option == 'Technology vs Issue':
-    fig = generate_interactive_heatmap(df_processed, tech_columns, issue_columns, 'Heatmap of Technology(ies) vs Issue(s)')
+    fig = generate_interactive_heatmap(
+        df_processed=df_processed,
+        index_columns=tech_columns,
+        column_columns=issue_columns,
+        title='',
+        xaxis_title="Issue(s)",
+        yaxis_title="Technology(ies)"
+    )
 elif option == 'Technology vs Sector':
-    fig = generate_interactive_heatmap(df_processed, tech_columns, sector_columns, 'Heatmap of Technology(ies) vs Sector(s)')
+    fig = generate_interactive_heatmap(
+        df_processed=df_processed,
+        index_columns=tech_columns,
+        column_columns=sector_columns,
+        title='',
+        xaxis_title="Sector(s)",
+        yaxis_title="Technology(ies)"
+    )
 elif option == 'Sector vs Issue':
-    fig = generate_interactive_heatmap(df_processed, sector_columns, issue_columns, 'Heatmap of Sector(s) vs Issue(s)')
+    fig = generate_interactive_heatmap(
+        df_processed=df_processed,
+        index_columns=sector_columns,
+        column_columns=issue_columns,
+        title='',
+        xaxis_title="Issue(s)",
+        yaxis_title="Sector(s)"
+    )
 elif option == 'Technology vs Transparency':
-    fig = generate_interactive_heatmap(df_processed, tech_columns, transp_columns, 'Heatmap of Technology(ies) vs Transparency')
+    fig = generate_interactive_heatmap(
+        df_processed=df_processed,
+        index_columns=tech_columns,
+        column_columns=transp_columns,
+        title='',
+        xaxis_title="Transparency",
+        yaxis_title="Technology(ies)"
+    )
 elif option == 'Issue vs Transparency':
-    fig = generate_interactive_heatmap(df_processed, issue_columns, transp_columns, 'Heatmap of Issue(s) vs Transparency')
+    fig = generate_interactive_heatmap(
+        df_processed=df_processed,
+        index_columns=issue_columns,
+        column_columns=transp_columns,
+        title='',
+        xaxis_title="Transparency",
+        yaxis_title="Issue(s)"
+    )
 elif option == 'Sector vs Transparency':
-    fig = generate_interactive_heatmap(df_processed, sector_columns, transp_columns, 'Heatmap of Sector(s) vs Transparency')
+    fig = generate_interactive_heatmap(
+        df_processed=df_processed,
+        index_columns=sector_columns,
+        column_columns=transp_columns,
+        title='',
+        xaxis_title="Transparency",
+        yaxis_title="Sector(s)"
+    )
 
 st.plotly_chart(fig, use_container_width=False)
 
@@ -346,14 +386,22 @@ if all_selected_features and st.button('Generate Clustering'):
 
     # Apply KMeans clustering
     kmeans = KMeans(n_clusters=5, random_state=42)
-    # After KMeans clustering
+    # After applying UMAP and KMeans clustering
     clusters = kmeans.fit_predict(embedding)
+    df_embedding['Cluster'] = clusters.astype(str)  # Convert cluster numbers to string if not already
 
-    # Correctly add the Cluster column to df_embedding BEFORE plotting
-    df_embedding['Cluster'] = clusters
+    # Defining a color map for clusters. This dictionary can be adjusted as needed.
+    color_discrete_map = {
+        '0': 'red',
+        '1': 'green',
+        '2': 'blue',
+        '3': 'orange',
+        '4': 'purple'
+        # Add more colors if you have more than 5 clusters.
+    }
 
 
-    # Then, your aggregate_features function
+    # Then, define the aggregate_features function
     def aggregate_features(df, prefix):
         aggregated_info = []
         for _, row in df.iterrows():
@@ -362,29 +410,46 @@ if all_selected_features and st.button('Generate Clustering'):
         return aggregated_info
 
 
-    # Adding Headline/title and aggregated features for hover information
+    # Adding aggregated features for hover information
     df_embedding['Headline/title'] = df_incidents['Headline/title'].values
     df_embedding['Technology'] = aggregate_features(df_incidents, 'tech')
     df_embedding['Sector'] = aggregate_features(df_incidents, 'sector')
     df_embedding['Issue'] = aggregate_features(df_incidents, 'issue')
     df_embedding['Transparency'] = aggregate_features(df_incidents, 'transp')
 
-    # Now generate the scatter plot
-    fig = px.scatter(df_embedding, x='UMAP-1', y='UMAP-2', color='Cluster',
-                     hover_data=['Headline/title', 'Technology', 'Sector', 'Issue', 'Transparency'])
-    fig.update_traces(marker=dict(size=5))
+    # Generate the scatter plot with the specified color map for clusters
+    fig = px.scatter(
+        df_embedding,
+        x='UMAP-1',
+        y='UMAP-2',
+        color='Cluster',
+        hover_data={
+            'UMAP-1': False,  # Exclude UMAP-1 from hover data
+            'UMAP-2': False,  # Exclude UMAP-2 from hover data
+            'Headline/title': True,  # Include Headline/title
+            'Technology': True,  # Include Technology
+            'Sector': True,  # Include Sector
+            'Issue': True,  # Include Issue
+            'Transparency': True  # Include Transparency
+        },
+        color_discrete_map=color_discrete_map  # Apply the color mapping
+    )
+
+    fig.update_traces(marker=dict(size=5))  # Keeping scatter plot markers at the desired size
+
     fig.update_layout(
         title='Incident Clustering with UMAP & Cluster Coloring',
         margin=dict(l=0, r=0, b=0, t=30),
         legend_title_text='Cluster',
         legend=dict(
-            itemsizing='constant',  # Make legend items larger
-            title_font_size=25,  # Adjust legend title font size
-            font_size=24  # Adjust legend item font size
+            itemsizing='constant',  # Attempt to make legend items appear larger
+            title_font_size=25,  # Adjusting the legend title font size
+            font_size=24  # Adjusting the legend item font size
         )
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
 
 
 
@@ -452,26 +517,67 @@ if all_selected_features and st.button('Generate Clustering with t-SNE'):
 
     # Apply KMeans clustering
     kmeans = KMeans(n_clusters=5, random_state=42)
+
+    # Define the color mapping for clusters
+    color_discrete_map = {
+        '0': 'red',
+        '1': 'green',
+        '2': 'blue',
+        '3': 'orange',
+        '4': 'purple'
+        # Add more colors if there are more than 5 clusters
+    }
+
+    # Continue with the rest of your code for t-SNE clustering
     clusters = kmeans.fit_predict(embedding)
+    df_embedding = pd.DataFrame(embedding, columns=['t-SNE-1', 't-SNE-2'])
+    df_embedding['Cluster'] = clusters.astype(str)  # Convert cluster numbers to string
 
-    # Prepare DataFrame for plotting
-    df_embedding = pd.DataFrame(embedding, columns=['UMAP-1', 'UMAP-2'])
-    df_embedding['Cluster'] = clusters.astype(str)  # Cast cluster numbers to string for categorical coloring
+
+    def aggregate_features(df, prefix):
+        """Aggregate the one-hot encoded features back into a list of features for each document."""
+        aggregated_info = []
+        for _, row in df.iterrows():
+            features = [col.replace(prefix + '_', '') for col in df.columns if col.startswith(prefix) and row[col] == 1]
+            aggregated_info.append(", ".join(features))
+        return aggregated_info
+
+
+    # Add Headline/title and aggregated features for hover information
     df_embedding['Headline/title'] = df_incidents['Headline/title'].values
+    df_embedding['Technology'] = aggregate_features(df_incidents, 'tech')
+    df_embedding['Sector'] = aggregate_features(df_incidents, 'sector')
+    df_embedding['Issue'] = aggregate_features(df_incidents, 'issue')
+    df_embedding['Transparency'] = aggregate_features(df_incidents, 'transp')
 
-    # Generate scatter plot with Plotly's automatic color assignment for categorical data
-    fig = px.scatter(df_embedding, x='UMAP-1', y='UMAP-2', color='Cluster', hover_data=['Headline/title'])
+    # Generate the scatter plot
+    fig = px.scatter(
+        df_embedding,
+        x='t-SNE-1',
+        y='t-SNE-2',
+        color='Cluster',
+        hover_data={
+            't-SNE-1': False,  # Exclude t-SNE-1 from hover data
+            't-SNE-2': False,  # Exclude t-SNE-2 from hover data
+            'Headline/title': True,
+            'Technology': True,
+            'Sector': True,
+            'Issue': True,
+            'Transparency': True
+        },
+        color_discrete_map=color_discrete_map  # Apply the color mapping
+    )
 
-    fig.update_traces(marker=dict(size=5))  # Keeping scatter plot markers at the desired size
+    fig.update_traces(marker=dict(size=5))
 
     fig.update_layout(
-        title='Incident Clustering with UMAP & Cluster Coloring',
+        title='Incident Clustering with t-SNE & Cluster Coloring',
         margin=dict(l=0, r=0, b=0, t=30),
         legend_title_text='Cluster',
         legend=dict(
-            itemsizing='constant',  # Attempt to make legend items appear larger
-            title_font_size=25,  # Adjusting the legend title font size
-            font_size=24  # Adjusting the legend item font size
+            itemsizing='constant',
+            title_font_size=25,
+            font_size=24
         )
     )
 
